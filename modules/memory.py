@@ -1,16 +1,20 @@
-# Memory Module
+# modules/memory.py
 
-from langchain.memory import ConversationBufferMemory
+from langchain_core.messages import HumanMessage, AIMessage
+
 
 class MemoryManager:
     def __init__(self):
-        self.memory = ConversationBufferMemory()
+        self.messages = []
 
-    def add_message(self, role: str, content: str):
-        self.memory.chat_memory.add_message(role=role, content=content)
+    def add_user_message(self, content: str):
+        self.messages.append(HumanMessage(content=content))
 
-    def get_memory(self):
-        return self.memory.chat_memory.messages
+    def add_ai_message(self, content: str):
+        self.messages.append(AIMessage(content=content))
 
-    def clear_memory(self):
-        self.memory.chat_memory.clear()
+    def get_messages(self):
+        return self.messages
+
+    def clear(self):
+        self.messages = []

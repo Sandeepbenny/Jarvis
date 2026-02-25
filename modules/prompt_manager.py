@@ -1,5 +1,6 @@
 # Prompt Manager Module
 
+from langchain_core.prompts import ChatPromptTemplate
 import yaml
 
 class PromptManager:
@@ -15,7 +16,7 @@ class PromptManager:
             raise RuntimeError(f"Failed to load prompts: {str(e)}")
 
     def get_prompt(self, prompt_type):
-        return self.prompts.get(prompt_type, "")
+        return ChatPromptTemplate.from_template(self.prompts.get(prompt_type, ""))
 
 # Example usage:
 # prompt_manager = PromptManager()

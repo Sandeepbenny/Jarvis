@@ -1,60 +1,110 @@
-# LLMHandler Module
+# modules/llm_handler.py
+
+from langchain_core.runnables import Runnable
+from langchain_core.messages import BaseMessage
+from langchain_core.prompt_values import PromptValue
+from langchain_core.prompt_values import ChatPromptValue
+from langchain_core.messages import BaseMessage
 
 import requests
-import openai
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-class LLMHandler:
-    def __init__(self, backend="openai"):
-        self.backend = backend
-        self.api_key = os.getenv("OPENAI_API_KEY") if backend == "openai" else os.getenv("NVIDIA_API_KEY")
 
-    def process(self, prompt: str) -> str:
+class LLMHandler(Runnable):
+    def __init__(self, backend: str = "openai", model: str = None):
+        self.backend = backend.lower()
+        self.api_key = (
+            os.getenv("OPENAI_API_KEY")
+            if self.backend == "openai"
+            else os.getenv("NVIDIA_API_KEY")
+        )
+
+        if not self.api_key:
+            raise ValueError(f"API key not found for backend: {self.backend}")
+
+        self.model = model or (
+            "gpt-4o-mini" if self.backend == "openai" else "meta/llama3-70b-instruct"
+        )
+
         if self.backend == "openai":
-            return self._process_openai(prompt)
-        elif self.backend == "nvidia":
-            return self._process_nvidia(prompt)
+            from openai import OpenAI
+            self.client = OpenAI(api_key=self.api_key)
+
+
+    def invoke(self, input, config=None):
+
+        # Convert ChatPromptValue → messages
+        if isinstance(input, ChatPromptValue):
+            messages = input.to_messages()
+
+        elif isinstance(input, list) and all(isinstance(m, BaseMessage) for m in input):
+            messages = input
+
+        elif isinstance(input, str):
+            messages = [{"role": "user", "content": input}]
+
         else:
-            return "Unsupported backend."
+            raise ValueError(f"Unsupported input type: {type(input)}")
 
-    def _process_openai(self, prompt: str) -> str:
-        try:
-            openai.api_key = self.api_key
-            response = openai.Completion.create(
-                engine="text-davinci-003",
-                prompt=prompt,
-                max_tokens=150
-            )
-            return response.choices[0].text.strip()
-        except Exception as e:
-            return f"OpenAI error: {str(e)}"
+        # Convert BaseMessage → JSON serializable dict
+        formatted_messages = []
+        for m in messages:
+            if hasattr(m, "type"):
+                role_map = {
+                    "human": "user",
+                    "ai": "assistant",
+                    "system": "system"
+                }
 
-    def _process_nvidia(self, prompt: str) -> str:
-        try:
-            invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Accept": "application/json"
-            }
-            payload = {
-                "model": "mistralai/mistral-large-3-675b-instruct-2512",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 2048,
-                "temperature": 0.15,
-                "top_p": 1.00,
-                "frequency_penalty": 0.00,
-                "presence_penalty": 0.00,
-                "stream": False
-            }
-
-            response = requests.post(invoke_url, headers=headers, json=payload)
-            if response.status_code == 200:
-                return response.json().get("choices", [{}])[0].get("message", {}).get("content", "No response text.")
+                formatted_messages.append({
+                    "role": role_map.get(m.type, "user"),
+                    "content": m.content
+                })
             else:
-                return f"NVIDIA API error: {response.status_code} - {response.text}"
-        except Exception as e:
-            return f"NVIDIA API error: {str(e)}"
+                formatted_messages.append(m)
+
+
+        if self.backend == "openai":
+            return self._call_openai(formatted_messages)
+        elif self.backend == "nvidia":
+            return self._call_nvidia(formatted_messages)
+
+    def _call_openai(self, messages):
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": m.type if hasattr(m, "type") else m["role"],
+                 "content": m.content if hasattr(m, "content") else m["content"]}
+                for m in messages
+            ],
+            temperature=0.7,
+        )
+        return response.choices[0].message.content.strip()
+
+    def _call_nvidia(self, messages):
+        invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": m.type if hasattr(m, "type") else m["role"],
+                 "content": m.content if hasattr(m, "content") else m["content"]}
+                for m in messages
+            ],
+            "temperature": 0.7,
+        }
+
+        response = requests.post(invoke_url, headers=headers, json=payload)
+
+        if response.status_code != 200:
+            raise Exception(f"NVIDIA API error: {response.text}")
+
+        return response.json()["choices"][0]["message"]["content"].strip()
