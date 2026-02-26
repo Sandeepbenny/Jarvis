@@ -1,42 +1,39 @@
-import asyncio
+# main.py
+
 from backend.orchestrator import Orchestrator
 
-async def voice_loop(orchestrator):
-    loop = asyncio.get_running_loop()
+
+def main() -> None:
+    """
+    Temporary terminal interface.
+
+    This simulates frontend behavior until
+    FastAPI / UI is connected.
+    """
+
+    orchestrator = Orchestrator()
+
+    print("Jarvis Assistant")
+    print("Type 'voice' to trigger microphone.")
+    print("Type 'exit' to quit.\n")
 
     while True:
-        transcript = await loop.run_in_executor(
-            None,
-            orchestrator.voice.listen
-        )
+        user_input = input("You: ").strip()
 
-        if transcript:
-            await orchestrator.submit("voice", transcript)
-
-
-async def text_loop(orchestrator):
-    loop = asyncio.get_running_loop()
-
-    while True:
-        text = await loop.run_in_executor(None, input, "You (Type): ")
-
-        if text.lower() == "exit":
+        if user_input.lower() == "exit":
             print("Shutting down...")
             break
 
-        if text.strip():
-            await orchestrator.submit("text", text)
+        if user_input.lower() == "voice":
+            result = orchestrator.process_voice()
+        else:
+            result = orchestrator.process_text(user_input)
 
-
-async def main():
-    orchestrator = Orchestrator()
-    await orchestrator.start()
-
-    await asyncio.gather(
-        voice_loop(orchestrator),
-        text_loop(orchestrator)
-    )
+        if "error" in result:
+            print("Jarvis:", result["error"])
+        else:
+            print("Jarvis:", result["response"])
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
