@@ -1,30 +1,42 @@
-import threading
-from modules.agent import JarvisAgent
-from modules.voice_engine import VoiceEngine
+import asyncio
+from backend.orchestrator import Orchestrator
 
-def voice_handler(agent, voice):
+async def voice_loop(orchestrator):
+    loop = asyncio.get_running_loop()
+
     while True:
-        command = voice.listen()
-        if command:
-            print(f"User (Voice): {command}")
-            reply = agent.handle_input(command)
-            voice.speak(reply)
+        transcript = await loop.run_in_executor(
+            None,
+            orchestrator.voice.listen
+        )
 
-def main():
-    # Force use of NVIDIA NIM for the brain
-    jarvis = JarvisAgent(backend="nvidia")
-    voice = VoiceEngine()
+        if transcript:
+            await orchestrator.submit("voice", transcript)
 
-    # Start the "Ears" in the background
-    threading.Thread(target=voice_handler, args=(jarvis, voice), daemon=True).start()
 
-    print("--- JARVIS ONLINE (Voice & Terminal Active) ---")
+async def text_loop(orchestrator):
+    loop = asyncio.get_running_loop()
+
     while True:
-        text_input = input("You (Type): ")
-        if text_input.lower() == "exit": break
-        response = jarvis.handle_input(text_input)
-        print(f"Jarvis: {response}")
-        voice.speak(response) # He will also speak his typed replies
+        text = await loop.run_in_executor(None, input, "You (Type): ")
+
+        if text.lower() == "exit":
+            print("Shutting down...")
+            break
+
+        if text.strip():
+            await orchestrator.submit("text", text)
+
+
+async def main():
+    orchestrator = Orchestrator()
+    await orchestrator.start()
+
+    await asyncio.gather(
+        voice_loop(orchestrator),
+        text_loop(orchestrator)
+    )
+
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
