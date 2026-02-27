@@ -1,0 +1,42 @@
+# ─── Core ───────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# ─── LangChain + LangGraph ──────────────────────────────
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-openai>=0.1.0          # Works for both OpenAI + NVIDIA (OpenAI-compatible)
+langgraph>=0.1.0
+
+# ─── LLM Backends ───────────────────────────────────────
+openai>=1.30.0                   # OpenAI SDK (also used by NVIDIA endpoint)
+
+# ─── System Tools ───────────────────────────────────────
+psutil>=5.9.0                    # CPU / RAM / disk / battery
+pyautogui>=0.9.54                # Keyboard / mouse / screenshots
+pyperclip>=1.8.2                 # Clipboard access
+
+# ─── Web Tools ──────────────────────────────────────────
+requests>=2.31.0
+beautifulsoup4>=4.12.0           # Web page parsing
+duckduckgo-search>=6.0.0         # Free web + news search
+
+# ─── Media Tools ────────────────────────────────────────
+pygame>=2.5.0                    # Audio playback
+
+# ─── Voice (NVIDIA Riva) ────────────────────────────────
+nvidia-riva-client               # NVIDIA Riva ASR + TTS
+SpeechRecognition>=3.10.0        # Microphone capture
+
+# ─── Google APIs (Calendar, Gmail) ──────────────────────
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# ─── YAML ───────────────────────────────────────────────
+PyYAML>=6.0.1
+
+# ─── Telegram Bot (optional) ────────────────────────────
+python-telegram-bot>=20.0        # Updated to v20+ async API

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis — Personal AI Assistant</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --surface2: #1a1a28;
+            --border: #2a2a3f;
+            --accent: #00d4ff;
+            --accent2: #7c3aed;
+            --green: #00ff88;
+            --text: #e0e0f0;
+            --muted: #6b7280;
+            --red: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .logo h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 3px;
+            color: var(--accent);
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.busy {
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Layout */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Chat Panel */
+        .chat-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+        }
+
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+        }
+
+        .chat-box::-webkit-scrollbar { width: 4px; }
+        .chat-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 85%;
+            animation: slideIn 0.2s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user { align-self: flex-end; }
+        .message.bot { align-self: flex-start; }
+
+        .message-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .message.user .message-label { text-align: right; }
+
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        .message.user .bubble {
+            background: linear-gradient(135deg, var(--accent2), #4f46e5);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.bot .bubble {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-bottom-left-radius: 4px;
+        }
+
+        .thinking .bubble {
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        .thinking .bubble::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+        }
+
+        /* Tool Activity in bot messages */
+        .tool-activity {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: var(--accent);
+        }
+
+        .tool-activity-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 0;
+        }
+
+        /* Input area */
+        .input-area {
+            padding: 16px 20px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-area textarea {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            padding: 12px 16px;
+            font-size: 0.92rem;
+            resize: none;
+            min-height: 44px;
+            max-height: 140px;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        .input-area textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .input-area textarea::placeholder { color: var(--muted); }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: white;
+        }
+
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .tool-chip {
+            padding: 6px 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-align: center;
+            cursor: default;
+            transition: all 0.2s;
+        }
+
+        .tool-chip.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 0.82rem;
+        }
+
+        .stat-value {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .quick-commands {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .quick-cmd {
+            padding: 8px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            color: var(--text);
+        }
+
+        .quick-cmd:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .sidebar-scroll::-webkit-scrollbar { width: 3px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+
+        /* Error toast */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            padding: 12px 20px;
+            background: var(--red);
+            color: white;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+
+        .toast.show { opacity: 1; }
+
+        /* Execution time badge */
+        .exec-time {
+            font-size: 0.68rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div class="logo">
+        <div class="logo-icon">J</div>
+        <h1>JARVIS</h1>
+    </div>
+    <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Ready</span>
+        <span>|</span>
+        <span id="request-count">0 requests</span>
+    </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <!-- Chat -->
+    <div class="chat-panel">
+        <div class="chat-box" id="chat-box">
+            <div class="message bot">
+                <div class="message-label">Jarvis</div>
+                <div class="bubble">
+                    Online and fully operational, sir. All systems ready. 
+                    I have access to <span id="tool-count">30+</span> tools including web search, 
+                    file management, system control, calendar, email, and code execution.
+                    How may I assist you?
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <textarea 
+                id="user-input" 
+                placeholder="Ask Jarvis anything... (Shift+Enter for new line, Enter to send)"
+                rows="1"
+            ></textarea>
+            <button class="btn btn-secondary" onclick="triggerVoice()" id="voice-btn" title="Voice input">
+                🎙️
+            </button>
+            <button class="btn btn-primary" onclick="sendMessage()" id="send-btn">
+                Send ↵
+            </button>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-scroll">
+            
+            <!-- Stats -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">System Status</div>
+                <div class="stat-row">
+                    <span>State</span>
+                    <span class="stat-value" id="agent-state">idle</span>
+                </div>
+                <div class="stat-row">
+                    <span>Messages</span>
+                    <span class="stat-value" id="msg-count">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Memory (facts)</span>
+                    <span class="stat-value" id="fact-count">0</span>
+                </div>
+            </div>
+
+            <!-- Quick Commands -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">Quick Commands</div>
+                <div class="quick-commands">
+                    <button class="quick-cmd" onclick="quickSend('What is my system status?')">📊 System Status</button>
+                    <button class="quick-cmd" onclick="quickSend('Take a screenshot')">📷 Screenshot</button>
+                    <button class="quick-cmd" onclick="quickSend('What is the weather in Mumbai?')">🌤️ Weather</button>
+                    <button class="quick-cmd" onclick="quickSend('Get my upcoming calendar events')">📅 Calendar</button>
+                    <button class="quick-cmd" onclick="quickSend('Search the web for latest AI news')">🔍 News</button>
+                    <button class="quick-cmd" onclick="quickSend('Show me my recent notes')">📝 Notes</button>
+                    <button class="quick-cmd" onclick="quickSend('What reminders do I have?')">⏰ Reminders</button>
+                    <button class="quick-cmd" onclick="quickSend('List my downloads folder')">📁 Files</button>
+                </div>
+            </div>
+
+            <!-- Available Tools -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">Available Tools</div>
+                <div class="tool-grid" id="tool-grid">
+                    <div class="tool-chip">🖥️ System</div>
+                    <div class="tool-chip">📁 Files</div>
+                    <div class="tool-chip">🔍 Web</div>
+                    <div class="tool-chip">🌤️ Weather</div>
+                    <div class="tool-chip">📅 Calendar</div>
+                    <div class="tool-chip">📧 Email</div>
+                    <div class="tool-chip">🎵 Media</div>
+                    <div class="tool-chip">📝 Notes</div>
+                    <div class="tool-chip">⏰ Reminders</div>
+                    <div class="tool-chip">💻 Code</div>
+                    <div class="tool-chip">📸 Screenshot</div>
+                    <div class="tool-chip">🔧 Shell</div>
+                </div>
+            </div>
+
+            <!-- Memory Actions -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">Memory</div>
+                <div class="quick-commands">
+                    <button class="quick-cmd" onclick="clearSession()">🗑️ Clear Conversation</button>
+                    <button class="quick-cmd" onclick="viewMemory()">🧠 View Memory</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+    const API = "http://127.0.0.1:8000";
+    let requestCount = 0;
+    let isBusy = false;
+
+    // Auto-resize textarea
+    const textarea = document.getElementById("user-input");
+    textarea.addEventListener("input", () => {
+        textarea.style.height = "auto";
+        textarea.style.height = Math.min(textarea.scrollHeight, 140) + "px";
+    });
+
+    textarea.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    async function sendMessage() {
+        const text = textarea.value.trim();
+        if (!text || isBusy) return;
+
+        textarea.value = "";
+        textarea.style.height = "auto";
+
+        appendMessage("You", text, "user");
+        const thinkingEl = appendMessage("Jarvis", "Thinking", "bot thinking");
+        thinkingEl.id = "thinking-msg";
+
+        setLoading(true);
+
+        try {
+            const res = await fetch(`${API}/text`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text }),
+            });
+
+            removeThinking();
+
+            if (!res.ok) {
+                const err = await res.json();
+                appendMessage("Jarvis", `Error: ${err.detail}`, "bot");
+                return;
+            }
+
+            const data = await res.json();
+            const msgEl = appendMessage("Jarvis", data.response, "bot");
+            
+            // Add execution time
+            if (data.elapsed_sec) {
+                const timeEl = document.createElement("div");
+                timeEl.className = "exec-time";
+                timeEl.textContent = `⚡ ${data.elapsed_sec}s`;
+                msgEl.appendChild(timeEl);
+            }
+
+            requestCount++;
+            updateStats(data);
+
+        } catch (err) {
+            removeThinking();
+            appendMessage("Jarvis", "Connection error — is the server running?", "bot");
+            showToast("Connection failed");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function triggerVoice() {
+        if (isBusy) return;
+        
+        const btn = document.getElementById("voice-btn");
+        btn.textContent = "🔴";
+        setLoading(true);
+
+        const thinkingEl = appendMessage("Jarvis", "Listening for voice input", "bot thinking");
+
+        try {
+            const res = await fetch(`${API}/voice`, { method: "POST" });
+            removeThinking();
+
+            if (!res.ok) {
+                const err = await res.json();
+                appendMessage("Jarvis", `Voice error: ${err.detail}`, "bot");
+                return;
+            }
+
+            const data = await res.json();
+            appendMessage("You (voice)", data.input, "user");
+            appendMessage("Jarvis", data.response, "bot");
+            updateStats(data);
+
+        } catch (err) {
+            removeThinking();
+            showToast("Voice processing failed");
+        } finally {
+            btn.textContent = "🎙️";
+            setLoading(false);
+        }
+    }
+
+    function quickSend(text) {
+        if (isBusy) return;
+        textarea.value = text;
+        sendMessage();
+    }
+
+    function appendMessage(sender, content, className) {
+        const chatBox = document.getElementById("chat-box");
+        const wrapper = document.createElement("div");
+        wrapper.className = `message ${className}`;
+
+        const label = document.createElement("div");
+        label.className = "message-label";
+        label.textContent = sender;
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = content;
+
+        wrapper.appendChild(label);
+        wrapper.appendChild(bubble);
+        chatBox.appendChild(wrapper);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        return wrapper;
+    }
+
+    function removeThinking() {
+        const el = document.getElementById("thinking-msg");
+        if (el) el.remove();
+    }
+
+    function setLoading(busy) {
+        isBusy = busy;
+        document.getElementById("send-btn").disabled = busy;
+        document.getElementById("status-dot").className = "status-dot" + (busy ? " busy" : "");
+        document.getElementById("status-text").textContent = busy ? "Processing..." : "Ready";
+    }
+
+    function updateStats(data) {
+        document.getElementById("request-count").textContent = `${requestCount} requests`;
+        if (data.state) {
+            document.getElementById("agent-state").textContent = data.state;
+        }
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById("toast");
+        toast.textContent = msg;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+
+    async function clearSession() {
+        if (!confirm("Clear conversation history? Long-term memory is preserved.")) return;
+        try {
+            await fetch(`${API}/memory/session`, { method: "DELETE" });
+            document.getElementById("chat-box").innerHTML = "";
+            appendMessage("Jarvis", "Session cleared. Long-term memory preserved, sir.", "bot");
+        } catch (e) {
+            showToast("Could not clear session");
+        }
+    }
+
+    async function viewMemory() {
+        try {
+            const res = await fetch(`${API}/memory`);
+            const data = await res.json();
+            const facts = data.facts || {};
+            const factList = Object.entries(facts).map(([k,v]) => `${k}: ${v}`).join("\n") || "No facts stored yet.";
+            appendMessage("Jarvis", `🧠 Memory Stats:\n• Messages: ${data.stats.current_session_messages}\n• Facts stored: ${data.stats.stored_facts}\n\nKnown facts:\n${factList}`, "bot");
+            document.getElementById("msg-count").textContent = data.stats.current_session_messages;
+            document.getElementById("fact-count").textContent = data.stats.stored_facts;
+        } catch (e) {
+            showToast("Could not fetch memory");
+        }
+    }
+
+    // Load tool count on startup
+    async function loadToolCount() {
+        try {
+            const res = await fetch(`${API}/tools`);
+            const data = await res.json();
+            document.getElementById("tool-count").textContent = data.tool_count;
+        } catch (e) {}
+    }
+
+    // Poll health
+    async function pollHealth() {
+        try {
+            const res = await fetch(`${API}/health`);
+            const data = await res.json();
+            if (data.memory) {
+                document.getElementById("msg-count").textContent = data.memory.current_session_messages || 0;
+                document.getElementById("fact-count").textContent = data.memory.stored_facts || 0;
+            }
+        } catch (e) {}
+    }
+
+    loadToolCount();
+    setInterval(pollHealth, 10000);
+</script>
+
+</body>
+</html>
