@@ -1,18 +1,33 @@
 # backend/api.py
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Optional
 from backend.orchestrator import Orchestrator
 import time
+import os
 
 app = FastAPI(
-    title="Jarvis Assistant API",
+    title="Jarvis Assistant",
     version="1.0.0"
 )
 
-# Single shared orchestrator instance
 orchestrator = Orchestrator()
+
+# ----------------------------------------
+# Serve Frontend
+# ----------------------------------------
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+
+@app.get("/")
+def serve_index():
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 
 # ----------------------------------------
@@ -24,11 +39,11 @@ class TextRequest(BaseModel):
 
 
 # ----------------------------------------
-# Health Check
+# Health
 # ----------------------------------------
 
 @app.get("/health")
-def health_check():
+def health():
     return {
         "status": "ok",
         "busy": orchestrator.is_busy()
@@ -41,50 +56,39 @@ def health_check():
 
 @app.post("/text")
 def process_text(request: TextRequest):
-    """
-    Process text input.
-    """
 
-    start_time = time.time()
+    start = time.time()
 
     result = orchestrator.process_text(request.text)
 
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
 
-    execution_time = round(time.time() - start_time, 3)
-
     return {
         "input": result["input"],
         "response": result["response"],
         "state": result["state"],
-        "execution_time_sec": execution_time
+        "execution_time_sec": round(time.time() - start, 3)
     }
 
 
 # ----------------------------------------
-# Voice Endpoint
+# Voice Endpoint (kept for later)
 # ----------------------------------------
 
 @app.post("/voice")
 def process_voice():
-    """
-    Trigger voice lifecycle:
-    Listen -> Process -> Speak
-    """
 
-    start_time = time.time()
+    start = time.time()
 
     result = orchestrator.process_voice()
 
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
 
-    execution_time = round(time.time() - start_time, 3)
-
     return {
         "input": result["input"],
         "response": result["response"],
         "state": result["state"],
-        "execution_time_sec": execution_time
+        "execution_time_sec": round(time.time() - start, 3)
     }
