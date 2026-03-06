@@ -100,7 +100,8 @@ class VoiceEngine:
             
             # Wait for playback to finish
             while pygame.mixer.get_busy():
-                pygame.time.Clock().tick(10)
+                pygame.time.Clock().tick(10) 
+                print("[Jarvis] Playing audio...")
 
         except Exception as e:
             print(f"[Speak Error] TTS Failure: {e}")
